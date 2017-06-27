@@ -1,0 +1,39 @@
+lua_shared_dict sigsci_conf 12k;
+lua_use_default_type off;
+
+init_by_lua '
+    -- default code location
+    local sigsci_module_path = "/opt/sigsci/nginx"
+
+    -- allow overriding of package path via env var
+    if os.getenv("SIGSCI_MODULE_PATH") ~= nil then
+      sigsci_module_path = os.getenv("SIGSCI_MODULE_PATH")
+    end
+
+    -- setup package path
+    package.path = sigsci_module_path .. "/?.lua;" .. package.path
+
+    -- load our code
+    sigsci = require("SignalSciences")
+
+    -- ===================================================================
+    --  The configuration options below can be used within init_by_lua()
+    --  to override our defaults. The commented configuration items below
+    --  show the current defaults.
+    --
+    --      agenthost - is the IP address or path to unix domain socket
+    --                  the SignalSciences Agent is listening on
+    --      agentport - is the local port (when using TCP) that the agent
+    --                  listens on
+    --      timeout   - agent socket timeout (in ms)
+    --      maxpost   - maximum POST body site in bytes
+    --
+    -- ===================================================================
+    sigsci.agenthost = "<%= @settings['rpc_address'].to_s -%>"
+    -- sigsci.agentport = 12345
+    -- sigsci.timeout = 100
+    -- sigsci.maxpost = 1000000
+';
+
+access_by_lua 'sigsci.prerequest()';
+log_by_lua    'sigsci.postrequest()';
